@@ -1,0 +1,42 @@
+#
+# This docker-compose file runs infrastructure required to host the services.
+# It is useful in debugging from Visual Studio, just run the infrastructure in Docker,
+# and services from the VS.
+#
+# Useful commands
+#
+# 1) Deploys stack with images from custom private repository 
+# docker stack deploy -c docker-compose.yml apka --with-registry-auth
+# 2) Create/connect to Azure vm 
+# docker-machine create --driver generic --generic-ip-address=<ip> --generic-ssh-key ~/.ssh/id_rsa <vmname>
+#
+version: '3'
+services:
+
+  # Redis Cache
+  redis:
+    image: redis
+    ports:
+      - "6379:6379"
+    container_name: redis
+
+  # Rabbit MQ
+  rabbit:
+    image: rabbitmq:3.6-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    container_name: rabbit
+  
+  # SQL Server for Linux
+  sqlserver:
+    image: sqlserver
+    build:
+      context: ./Database
+      dockerfile: Dockerfile
+    ports:
+      - "1433:1433"
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=Zaq123#!
+    container_name: sqlserver

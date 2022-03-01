@@ -1,0 +1,56 @@
+version: '3.4'
+
+services:
+  ecommerce.catalog.api:
+    environment:
+      - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT}
+      - AzureServicesAuthConnectionString=${MANAGED_IDENTITY}
+      - APPINSIGHTS_INSTRUMENTATIONKEY=${AI_KEY}
+    ports:
+      - "80"
+
+  ecommerce.customers.api:
+    environment:
+      - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT}
+      - AzureServicesAuthConnectionString=${MANAGED_IDENTITY}
+    ports:
+      - "80"
+
+  ecommerce.reporting.api:
+    environment:
+      - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT}
+      - AzureServicesAuthConnectionString=${MANAGED_IDENTITY}
+    ports:
+      - "80"
+
+  ecommerce.payment.host:
+    environment:
+      - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT}
+      - AzureServicesAuthConnectionString=${MANAGED_IDENTITY}
+    ports:
+      - "80"
+
+  ecommerce.shipping.host:
+    environment:
+      - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT}
+      - AzureServicesAuthConnectionString=${MANAGED_IDENTITY}
+    ports:
+      - "80"
+
+  ecommerce.sales.api:
+    environment:
+      - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT}
+      - AzureServicesAuthConnectionString=${MANAGED_IDENTITY}
+    ports:
+      - "80"
+
+  ecommerce.webapp:
+    environment:
+      - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT}
+      - AzureServicesAuthConnectionString=${MANAGED_IDENTITY}
+      - ASPNETCORE_URLS=http://+:80
+    ports:
+      - "54703:80"
+    volumes:
+      - ${APPDATA}/ASP.NET/Https:/root/.aspnet/https:ro
+      - ${APPDATA}/Microsoft/UserSecrets:/root/.microsoft/usersecrets:ro

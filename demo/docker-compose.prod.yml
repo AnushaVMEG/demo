@@ -1,0 +1,149 @@
+#
+# This docker-compose file is meant to run entire ECommerce sample on Docker Swarm mode 
+# either locally or on Azure from azure registry
+#
+# Before you proceed, please make sure you have
+#  - Docker Swarm mode running either locally or on Azure (single VM, multiple VMs in availability set, or a scaleset)
+#  - private Azure Container Registry called ecommercesampleregistry
+#
+# Steps to run:
+#  - login to the remote registry on your local instance: docker login ecommercesampleregistry.azurecr.io -u ecommercesampleregistry -p 6ooli14nIM3Wxt31q9dAcx3Ur1oKuGD=
+#  - build local images: docker-compose -f docker-compose.azure.yml build  
+#  - push local images to the repository: docker-compose -f docker-compose.azure.yml push
+#  - download yaml onto Docker swarm manager node: curl -o docker-compose.yml https://raw.githubusercontent.com/pwlodek/ECommerce.Microservices/master/docker-compose.azure.yml
+#  - login to the remote registry on your manager and worker nodes: docker login ecommercesampleregistry.azurecr.io -u ecommercesampleregistry -p 6ooli14nIM3Wxt31q9dAcx3Ur1oKuGD=
+#  - deploy stack on manager node: docker stack deploy -c docker-compose.yml app1 --with-registry-auth
+#
+# Remember to create load balancing rule for port 8080 (webapp) so that you can connect from external hosts
+#
+
+version: '3.4'
+services:
+
+  # Redis Cache
+  redis:
+    image: redis
+    ports:
+      - "6379:6379"
+    container_name: redis
+
+  # Rabbit MQ
+  rabbit:
+    image: rabbitmq:3.6-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+  
+  # SQL Server for Linux
+  sqlserver:
+    image: ${DOCKER_REGISTRY}sqlserver
+    build:
+      context: ./Database
+      dockerfile: Dockerfile
+    ports:
+      - "1433:1433"
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=Zaq123#!
+
+  # Catalog Microservice
+  ecommerce-catalog-api:
+    image: ${DOCKER_REGISTRY}ecommerce/catalog.api
+    build:
+      context: .
+      dockerfile: Services/ECommerce.Catalog.Api/Dockerfile
+    environment:      
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_ORCHESTRATOR=Docker
+    ports:
+      - "8085:80"
+    deploy:
+      replicas: 2
+    depends_on: 
+      - rabbit
+      - sqlserver
+
+  # Customers Microservice
+  ecommerce-customers-api:
+    image: ${DOCKER_REGISTRY}ecommerce/customers.api
+    build:
+      context: .
+      dockerfile: Services/ECommerce.Customers.Api/Dockerfile
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_ORCHESTRATOR=Docker
+    ports:
+      - "8082:80"
+    depends_on: 
+      - rabbit
+      - sqlserver
+
+  # Payment Microservice
+  ecommerce-payment-host:
+    image: ${DOCKER_REGISTRY}ecommerce/payment.host
+    build:
+      context: .
+      dockerfile: Services/ECommerce.Payment.Host/Dockerfile
+    environment:
+      RabbitHost: rabbit
+    depends_on: 
+      - rabbit
+
+  # Reporting Microservice
+  ecommerce-reporting-api:
+    image: ${DOCKER_REGISTRY}ecommerce/reporting.api
+    build:
+      context: .
+      dockerfile: Services/ECommerce.Reporting.Api/Dockerfile
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_ORCHESTRATOR=Docker
+    ports:
+      - "8084:80"
+    depends_on: 
+      - rabbit
+      - sqlserver
+
+  # Sales Microservice
+  ecommerce-sales-api:
+    image: ${DOCKER_REGISTRY}ecommerce/sales.api
+    build:
+      context: .
+      dockerfile: Services/ECommerce.Sales.Api/Dockerfile
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_ORCHESTRATOR=Docker
+    ports:
+      - "8083:80"
+    depends_on: 
+      - rabbit
+      - sqlserver
+
+  # Shipping Microservice
+  ecommerce-shipping-host:
+    image: ${DOCKER_REGISTRY}ecommerce/shipping.host
+    build:
+      context: .
+      dockerfile: Services/ECommerce.Shipping.Host/Dockerfile
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_ORCHESTRATOR=Docker
+    depends_on: 
+      - rabbit
+
+  # WebApp Microservice
+  ecommerce-webapp:
+    image: ${DOCKER_REGISTRY}ecommerce/webapp
+    build:
+      context: .
+      dockerfile: Web/ECommerce.WebApp/Dockerfile
+    ports:
+      - "8080:80"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_ORCHESTRATOR=Docker
+    depends_on: 
+      - ecommerce-catalog-api
+      - ecommerce-customers-api
+      - ecommerce-reporting-api
+      - ecommerce-sales-api
